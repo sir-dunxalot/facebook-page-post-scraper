@@ -4,9 +4,9 @@ import datetime
 import csv
 import time
 
-app_id = "<FILL IN>"
-app_secret = "<FILL IN>" # DO NOT SHARE WITH ANYONE!
-page_id = "cnn"
+app_id = "1448270435248078"
+app_secret = "02cc640f23fbe7824b8aa8678178c56e" # DO NOT SHARE WITH ANYONE!
+page_id = "146505212039213"
 
 access_token = app_id + "|" + app_secret
 
@@ -14,7 +14,7 @@ def request_until_succeed(url):
     req = urllib2.Request(url)
     success = False
     while success is False:
-        try: 
+        try:
             response = urllib2.urlopen(req)
             if response.getcode() == 200:
                 success = True
@@ -37,8 +37,8 @@ def getFacebookPageFeedData(page_id, access_token, num_statuses):
     # Construct the URL string; see http://stackoverflow.com/a/37239851 for
     # Reactions parameters
     base = "https://graph.facebook.com/v2.6"
-    node = "/%s/posts" % page_id 
-    fields = "/?fields=message,link,created_time,type,name,id," + \
+    node = "/%s/posts" % page_id
+    fields = "/?fields=message,link,created_time,type,name,id,properties" + \
             "comments.limit(0).summary(true),shares,reactions" + \
             ".limit(0).summary(true)"
     parameters = "&limit=%s&access_token=%s" % (num_statuses, access_token)
@@ -89,6 +89,13 @@ def processFacebookPageFeedStatus(status, access_token):
     status_link = '' if 'link' not in status.keys() else \
             unicode_normalize(status['link'])
 
+    # Get length, if available
+
+    status_properties = object() if 'properties' not in status.keys() else \
+            unicode_normalize(status['properties'])
+    status_video_length = '' if 'length' not in status_properties.keys() else \
+            unicode_normalize(status_properties['length'])
+
     # Time needs special care since a) it's in UTC and
     # b) it's not easy to use in statistical programs.
 
@@ -138,15 +145,15 @@ def processFacebookPageFeedStatus(status, access_token):
     # Return a tuple of all processed data
 
     return (status_id, status_message, link_name, status_type, status_link,
-            status_published, num_reactions, num_comments, num_shares,
+            status_published, status_video_length, num_reactions, num_comments, num_shares,
             num_likes, num_loves, num_wows, num_hahas, num_sads, num_angrys)
 
 def scrapeFacebookPageFeedStatus(page_id, access_token):
     with open('%s_facebook_statuses.csv' % page_id, 'wb') as file:
         w = csv.writer(file)
         w.writerow(["status_id", "status_message", "link_name", "status_type",
-                    "status_link", "status_published", "num_reactions", 
-                    "num_comments", "num_shares", "num_likes", "num_loves", 
+                    "status_link", "status_published", "status_video_length", "num_reactions",
+                    "num_comments", "num_shares", "num_likes", "num_loves",
                     "num_wows", "num_hahas", "num_sads", "num_angrys"])
 
         has_next_page = True
