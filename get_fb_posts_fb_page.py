@@ -8,9 +8,9 @@ import time
 
 app_id = "1448270435248078"
 app_secret = "02cc640f23fbe7824b8aa8678178c56e" # DO NOT SHARE WITH ANYONE!
-page_id = "146505212039213"
-date_since = None # %d-%m-%Y or None
-date_until = None # %d-%m-%Y or None
+page_id = "21898300328"
+date_since = "01-03-2015" # %d-%m-%Y or None
+date_until = "31-03-2015" # %d-%m-%Y or None
 
 # End of options
 
@@ -110,7 +110,7 @@ def processFacebookPageFeedStatus(status, access_token):
     status_properties = [] if 'properties' not in status.keys() else \
             status['properties']
     status_length_properties = filter(lambda x: x['name'] == 'Length', status_properties) # Find length
-    status_video_length = '' if len(status_properties) == 0 else \
+    status_video_length = '' if len(status_length_properties) == 0 else \
             status_length_properties[0]['text']
 
     # Time needs special care since a) it's in UTC and
