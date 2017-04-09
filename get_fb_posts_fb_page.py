@@ -7,6 +7,8 @@ import time
 app_id = "1448270435248078"
 app_secret = "02cc640f23fbe7824b8aa8678178c56e" # DO NOT SHARE WITH ANYONE!
 page_id = "146505212039213"
+date_since = "01-04-2017" # %d-%m-%Y or None
+date_until = "04-04-2017" # %d-%m-%Y or None
 
 access_token = app_id + "|" + app_secret
 
@@ -43,6 +45,16 @@ def getFacebookPageFeedData(page_id, access_token, num_statuses):
             ".limit(0).summary(true)"
     parameters = "&limit=%s&access_token=%s" % (num_statuses, access_token)
     url = base + node + fields + parameters
+
+    # If a date range is provided, use it
+
+    if date_since is not None:
+        timestamp_since = time.mktime(datetime.datetime.strptime(date_since, "%d-%m-%Y").timetuple())
+        url = url + "&since=%s" % timestamp_since
+
+    if date_until is not None:
+        timestamp_until = time.mktime(datetime.datetime.strptime(date_until, "%d-%m-%Y").timetuple())
+        url = url + "&until=%s" % timestamp_until
 
     # retrieve data
     data = json.loads(request_until_succeed(url))
@@ -150,7 +162,12 @@ def processFacebookPageFeedStatus(status, access_token):
             num_likes, num_loves, num_wows, num_hahas, num_sads, num_angrys)
 
 def scrapeFacebookPageFeedStatus(page_id, access_token):
-    with open('%s_facebook_statuses.csv' % page_id, 'wb') as file:
+
+    # Append date range to filename
+
+    csv_filename = 'scraped_data/%s_facebook_statuses_%s_%s.csv' % (page_id, date_since, date_until)
+
+    with open(csv_filename, 'wb') as file:
         w = csv.writer(file)
         w.writerow(["status_id", "status_message", "link_name", "status_type",
                     "status_link", "status_published", "status_video_length", "num_reactions",
