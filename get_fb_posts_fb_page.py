@@ -4,11 +4,15 @@ import datetime
 import csv
 import time
 
+# Start of options
+
 app_id = "1448270435248078"
 app_secret = "02cc640f23fbe7824b8aa8678178c56e" # DO NOT SHARE WITH ANYONE!
 page_id = "146505212039213"
-date_since = "01-04-2017" # %d-%m-%Y or None
-date_until = "04-04-2017" # %d-%m-%Y or None
+date_since = None # %d-%m-%Y or None
+date_until = None # %d-%m-%Y or None
+
+# End of options
 
 access_token = app_id + "|" + app_secret
 
