@@ -8,9 +8,10 @@ import time
 
 app_id = "1448270435248078"
 app_secret = "02cc640f23fbe7824b8aa8678178c56e" # DO NOT SHARE WITH ANYONE!
-page_id = "146505212039213"
-date_since = "01-03-2016" # %d-%m-%Y or None
-date_until = "31-03-2016" # %d-%m-%Y or None
+page_id = "10664530778"
+date_since = "01-11-2016" # %d-%m-%Y or None
+date_until = "30-11-2016" # %d-%m-%Y or None
+get_reaction_stats = False;
 
 # End of options
 
@@ -136,7 +137,7 @@ def processFacebookPageFeedStatus(status, access_token):
     # http://newsroom.fb.com/news/2016/02/reactions-now-available-globally/
 
     reactions = getReactionsForStatus(status_id, access_token) if \
-            status_published > '2016-02-24 00:00:00' else {}
+            status_published > '2016-02-24 00:00:00' and get_reaction_stats else {}
 
     num_likes = 0 if 'like' not in reactions else \
             reactions['like']['summary']['total_count']
