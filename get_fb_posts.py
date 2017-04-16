@@ -211,7 +211,12 @@ def scrapeFacebookPageFeedStatus(page, access_token):
     overwrite_file = cli.ask('The file %s already exists. Do you want to overwrite it?' % csv_file_path)
 
     if not overwrite_file:
+
+      # End the scraping but don't stop module's execution
+      # so we can scrape subsequent pages
+
       print('Skipping %s' % page_name)
+
       return
 
   with open(csv_file_path, 'wb') as file:
@@ -257,9 +262,11 @@ def scrapeFacebookPageFeedStatus(page, access_token):
     print "\nDone!\n%s Statuses Processed in %s\n" % \
             (num_processed, datetime.datetime.now() - scrape_starttime)
 
-    Notifier.notify('Finished scraping FB data')
+    Notifier.notify('Finished scraping %s' % page_name)
 
 
 if __name__ == '__main__':
   for page in pages:
     scrapeFacebookPageFeedStatus(page, access_token)
+
+  Notifier.notify('Finished scraping all FB data')
