@@ -3,10 +3,12 @@ import datetime
 import csv
 import argparse
 import os
+import pages_to_parse
 import sys
 import time
 
 from lib import cli, http
+from pync import Notifier
 
 # Start of options
 
@@ -15,102 +17,10 @@ app_secret = "02cc640f23fbe7824b8aa8678178c56e" # DO NOT SHARE WITH ANYONE!
 get_reaction_stats = False;
 output_dir = 'scraped_data'
 
-pages = [
-  {
-    'page_id': '146505212039213',
-    'name': 'Unilad',
-    'category': 'Hype'
-  }, {
-    'page_id': '199098633470668',
-    'name': 'LAD Bible',
-    'category': 'Hype'
-  }
-  # }, {
-  #   'page_id': '348156187501',
-  #   'name': 'Barstool Sports',
-  #   'category': 'Hype'
-  # }, {
-  #   'page_id': '21898300328',
-  #   'name': 'Buzzfeed',
-  #   'category': 'Hype'
-  # }, {
-  #   'page_id': '18468761129',
-  #   'name': 'Huffington Post',
-  #   'category': 'News'
-  # }, {
-  #   'page_id': '442430012490396',
-  #   'name': 'Circa',
-  #   'category': 'News'
-  # }, {
-  #   'page_id': '6250307292',
-  #   'name': 'Washington Post',
-  #   'category': 'News'
-  # }, {
-  #   'page_id': '228735667216',
-  #   'name': 'BBC News',
-  #   'category': 'News'
-  # }, {
-  #   'page_id': '104266592953439',
-  #   'name': 'ESPN',
-  #   'category': 'Sports'
-  # }, {
-  #   'page_id': '25427813597',
-  #   'name': 'Goal.com',
-  #   'category': 'Sports'
-  # }, {
-  #   'page_id': '42933792278',
-  #   'name': 'Vogue',
-  #   'category': 'Health & beauty'
-  # }, {
-  #   'page_id': '14482400667',
-  #   'name': 'Health.com',
-  #   'category': 'Health & beauty'
-  # }, {
-  #   'page_id': '34834516787',
-  #   'name': "Women's Health",
-  #   'category': 'Health & beauty'
-  # }, {
-  #   'page_id': '14866608226',
-  #   'name': "Men's Fitness",
-  #   'category': 'Health & beauty'
-  # }, {
-  #   'page_id': '26815555478',
-  #   'name': 'Glamour',
-  #   'category': 'Health & beauty'
-  # }, {
-  #   'page_id': '20534666726',
-  #   'name': 'Food Network',
-  #   'category': 'Food'
-  # }, {
-  #   'page_id': '61511025427',
-  #   'name': 'Taste of Home',
-  #   'category': 'Food'
-  # }, {
-  #   'page_id': '21317493981',
-  #   'name': 'Conde Naste Traveller',
-  #   'category': 'Travel & Tourism'
-  # }, {
-  #   'page_id': '64067037679',
-  #   'name': 'Expedia',
-  #   'category': 'Travel & Tourism'
-  # }, {
-  #   'page_id': '113408673932',
-  #   'name': 'HBO',
-  #   'category': 'Entertainment'
-  # }, {
-  #   'page_id': '296025760408983',
-  #   'name': 'Warner Bros',
-  #   'category': 'Entertainment'
-  # }, {
-  #   'page_id': '10664530778',
-  #   'name': 'Rolling Stone',
-  #   'category': 'Entertainment'
-  # }
-]
-
 # End of options
 
 date_format = "%d-%m-%Y"
+pages = pages_to_parse.pages
 
 # Parse arguments given via the CLI
 
@@ -297,10 +207,12 @@ def scrapeFacebookPageFeedStatus(page, access_token):
   csv_file_path = '%s/%s_posts_%s_%s.csv' % (output_dir, formatted_page_name, date_since_string, date_until_string)
 
   if os.path.isfile(csv_file_path):
+    Notifier.notify('File already exists - response needed')
     overwrite_file = cli.ask('The file %s already exists. Do you want to overwrite it?' % csv_file_path)
 
     if not overwrite_file:
-      raise Exception('Not overwriting existing file')
+      print('Skipping %s' % page_name)
+      return
 
   with open(csv_file_path, 'wb') as file:
     w = csv.writer(file)
@@ -344,6 +256,8 @@ def scrapeFacebookPageFeedStatus(page, access_token):
 
     print "\nDone!\n%s Statuses Processed in %s\n" % \
             (num_processed, datetime.datetime.now() - scrape_starttime)
+
+    Notifier.notify('Finished scraping FB data')
 
 
 if __name__ == '__main__':
