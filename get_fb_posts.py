@@ -1,16 +1,17 @@
-import urllib2
 import json
 import datetime
 import csv
+import argparse
+import os
+import sys
 import time
+
+from lib import cli, http
 
 # Start of options
 
 app_id = "1448270435248078"
 app_secret = "02cc640f23fbe7824b8aa8678178c56e" # DO NOT SHARE WITH ANYONE!
-page_id = "21317493981"
-date_since = "01-03-2017" # %d-%m-%Y or None
-date_until = "31-03-2017" # %d-%m-%Y or None
 get_reaction_stats = False;
 output_dir = 'scraped_data'
 
@@ -24,54 +25,132 @@ pages = [
     'name': 'LAD Bible',
     'category': 'Hype'
   }
+  # }, {
+  #   'page_id': '348156187501',
+  #   'name': 'Barstool Sports',
+  #   'category': 'Hype'
+  # }, {
+  #   'page_id': '21898300328',
+  #   'name': 'Buzzfeed',
+  #   'category': 'Hype'
+  # }, {
+  #   'page_id': '18468761129',
+  #   'name': 'Huffington Post',
+  #   'category': 'News'
+  # }, {
+  #   'page_id': '442430012490396',
+  #   'name': 'Circa',
+  #   'category': 'News'
+  # }, {
+  #   'page_id': '6250307292',
+  #   'name': 'Washington Post',
+  #   'category': 'News'
+  # }, {
+  #   'page_id': '228735667216',
+  #   'name': 'BBC News',
+  #   'category': 'News'
+  # }, {
+  #   'page_id': '104266592953439',
+  #   'name': 'ESPN',
+  #   'category': 'Sports'
+  # }, {
+  #   'page_id': '25427813597',
+  #   'name': 'Goal.com',
+  #   'category': 'Sports'
+  # }, {
+  #   'page_id': '42933792278',
+  #   'name': 'Vogue',
+  #   'category': 'Health & beauty'
+  # }, {
+  #   'page_id': '14482400667',
+  #   'name': 'Health.com',
+  #   'category': 'Health & beauty'
+  # }, {
+  #   'page_id': '34834516787',
+  #   'name': "Women's Health",
+  #   'category': 'Health & beauty'
+  # }, {
+  #   'page_id': '14866608226',
+  #   'name': "Men's Fitness",
+  #   'category': 'Health & beauty'
+  # }, {
+  #   'page_id': '26815555478',
+  #   'name': 'Glamour',
+  #   'category': 'Health & beauty'
+  # }, {
+  #   'page_id': '20534666726',
+  #   'name': 'Food Network',
+  #   'category': 'Food'
+  # }, {
+  #   'page_id': '61511025427',
+  #   'name': 'Taste of Home',
+  #   'category': 'Food'
+  # }, {
+  #   'page_id': '21317493981',
+  #   'name': 'Conde Naste Traveller',
+  #   'category': 'Travel & Tourism'
+  # }, {
+  #   'page_id': '64067037679',
+  #   'name': 'Expedia',
+  #   'category': 'Travel & Tourism'
+  # }, {
+  #   'page_id': '113408673932',
+  #   'name': 'HBO',
+  #   'category': 'Entertainment'
+  # }, {
+  #   'page_id': '296025760408983',
+  #   'name': 'Warner Bros',
+  #   'category': 'Entertainment'
+  # }, {
+  #   'page_id': '10664530778',
+  #   'name': 'Rolling Stone',
+  #   'category': 'Entertainment'
+  # }
 ]
-
-# Unilad  Hype    146505212039213
-# Lab Bible   Hype    199098633470668
-# Barstool sports Hype    348156187501
-# Buzzfeed    Hype    21898300328
-# Huffington post News    18468761129
-# Circa   News    442430012490396
-# Washington Post News    6250307292
-# BBC News    228735667216
-# ESPN    Sports  104266592953439
-# Goal.com    Sports  25427813597
-# Vogue   Health & beauty 42933792278
-# Health.com  Health & beauty 14482400667
-# Women's Health  Health & beauty 34834516787
-# Men's fitness   Health & beauty 14866608226
-# Glamour Health & beauty 26815555478
-# Food Network    Food    20534666726
-# Taste of Home   Food    61511025427
-# CondeNastTraveler   Travel  21317493981
-# Expedia Travel  64067037679
-# HBO Entertainment   113408673932
-# Warner Bros Entertainment   296025760408983
-# Rolling Stone   Entertainment   10664530778
 
 # End of options
 
+date_format = "%d-%m-%Y"
+
+# Parse arguments given via the CLI
+
+def valid_date(s):
+  try:
+    return datetime.datetime.strptime(s, date_format)
+  except ValueError:
+    msg = "Not a valid date: %s." % s
+
+    raise argparse.ArgumentTypeError(msg)
+
+parser = argparse.ArgumentParser(description = 'Options for pulling data from FB')
+
+parser.add_argument('--date_since', type = valid_date, help = 'Start date of the date range for which you want to pull data')
+parser.add_argument('--date_until', type = valid_date, help = 'End date of the date range for which you want to pull data')
+
+args = parser.parse_args()
+
+# Set date defaults is none are passed
+
+date_now = datetime.datetime.now()
+
+date_since = date_now - datetime.timedelta(days = 2 * 365) if args.date_since is None else \
+  args.date_since
+
+if date_since > date_now: # Make sure date_since is not in the future
+  raise argparse.ArgumentTypeError('date_since cannot be in the future')
+
+date_until = date_now if args.date_until is None else \
+  args.date_until
+
+if date_since > date_until:
+  raise argparse.ArgumentTypeError('date_since cannot be after date_until')
+
+# Create access token
+
 access_token = app_id + "|" + app_secret
 
-def request_until_succeed(url):
-  req = urllib2.Request(url)
-  success = False
-
-  while success is False:
-    try:
-      response = urllib2.urlopen(req)
-      if response.getcode() == 200:
-          success = True
-    except Exception, e:
-      print e
-      time.sleep(5)
-
-      print "Error for URL %s: %s" % (url, datetime.datetime.now())
-      print "Retrying."
-
-  return response.read()
-
 # Needed to write tricky unicode correctly to csv
+
 def unicode_normalize(text):
   return text.translate({ 0x2018:0x27, 0x2019:0x27, 0x201C:0x22, 0x201D:0x22,
                             0xa0:0x20 }).encode('utf-8')
@@ -91,15 +170,15 @@ def getFacebookPageFeedData(page_id, access_token, num_statuses):
   # If a date range is provided, use it
 
   if date_since is not None:
-    timestamp_since = time.mktime(datetime.datetime.strptime(date_since, "%d-%m-%Y").timetuple())
+    timestamp_since = time.mktime(date_since.timetuple())
     url = url + "&since=%s" % timestamp_since
 
   if date_until is not None:
-    timestamp_until = time.mktime(datetime.datetime.strptime(date_until, "%d-%m-%Y").timetuple())
+    timestamp_until = time.mktime(date_until.timetuple())
     url = url + "&until=%s" % timestamp_until
 
   # retrieve data
-  data = json.loads(request_until_succeed(url))
+  data = json.loads(http.request_until_succeed(url))
 
   return data
 
@@ -121,7 +200,7 @@ def getReactionsForStatus(status_id, access_token):
   url = base + node + reactions + parameters
 
   # retrieve data
-  data = json.loads(request_until_succeed(url))
+  data = json.loads(http.request_until_succeed(url))
 
   return data
 
@@ -204,14 +283,26 @@ def processFacebookPageFeedStatus(status, access_token):
           num_likes, num_loves, num_wows, num_hahas, num_sads, num_angrys)
 
 def scrapeFacebookPageFeedStatus(page, access_token):
+
+  # Check the file doesn't already exist
+
   page_id = page['page_id']
   page_name = page['name']
 
-  # Append date range to filename
+  date_since_string = date_since.strftime(date_format)
+  date_until_string = date_until.strftime(date_format)
 
-  csv_filename = '%s/%s_facebook_statuses_%s_%s.csv' % (output_dir, page_id, date_since, date_until)
+  formatted_page_name = '-'.join(page_name.lower().split())
 
-  with open(csv_filename, 'wb') as file:
+  csv_file_path = '%s/%s_posts_%s_%s.csv' % (output_dir, formatted_page_name, date_since_string, date_until_string)
+
+  if os.path.isfile(csv_file_path):
+    overwrite_file = cli.ask('The file %s already exists. Do you want to overwrite it?' % csv_file_path)
+
+    if not overwrite_file:
+      raise Exception('Not overwriting existing file')
+
+  with open(csv_file_path, 'wb') as file:
     w = csv.writer(file)
     w.writerow(["status_id", "status_message", "link_name", "status_type",
                 "status_link", "status_published", "status_video_length", "num_reactions",
@@ -244,7 +335,7 @@ def scrapeFacebookPageFeedStatus(page, access_token):
 
       # if there is no next page, we're done.
       if 'paging' in statuses.keys():
-        statuses = json.loads(request_until_succeed(
+        statuses = json.loads(http.request_until_succeed(
                                   statuses['paging']['next']))
       else:
         has_next_page = False
