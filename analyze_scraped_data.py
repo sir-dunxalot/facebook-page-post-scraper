@@ -22,7 +22,7 @@ resample_period = 'M'
 parser = argparse.ArgumentParser(description = 'Options for analyzing data from FB')
 
 parser.add_argument('action', help = 'The name of the analysis method to run')
-parser.add_argument('--output', action='store_true', help = 'When present, analysis will be outputted into a CSV file', default = False)
+parser.add_argument('--output', action = 'store_true', help = 'When present, analysis will be outputted into a CSV file', default = False)
 
 args = parser.parse_args()
 
@@ -41,13 +41,23 @@ def createDataFrame():
 
   compilation_start = datetime.datetime.now()
 
+  # Collate all matching CSVs into a single dataframe
+
   all_files = glob.glob(input_path + '/*.csv')
 
   dataframe = pd.concat((pd.read_csv(file, index_col = False) for file in all_files))
 
+  # Add page_id
+
+  dataframe['page_id'] = dataframe['status_id'].apply(lambda x: x.split('_')[0])
+
+  # Format and list by Datetime
+
   dataframe['Datetime'] = pd.to_datetime(dataframe['status_published'])
 
   dataframe = dataframe.set_index('Datetime')
+
+  # Print the duration it took to create the dataframe for informational purposes
 
   duration = datetime.datetime.now() - compilation_start
 
@@ -68,6 +78,22 @@ def groupByType():
   writeDataFrameToCsv(formatted_status_types)
 
   formatted_status_types.plot()
+
+  plt.show()
+
+def groupByPage():
+
+  df = createDataFrame()
+
+  page_ids = df.groupby('page_id').resample(resample_period).size()
+
+  formatted_page_ids = page_ids.fillna(0).transpose()
+
+  print formatted_page_ids
+
+  writeDataFrameToCsv(formatted_page_ids)
+
+  formatted_page_ids.plot()
 
   plt.show()
 
