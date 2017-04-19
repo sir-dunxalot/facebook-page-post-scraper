@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+from fixtures import pages_to_parse
 from lib import formatting
 
 # Options
@@ -85,19 +86,40 @@ def groupByPage():
 
   df = createDataFrame()
 
-  page_ids = df.groupby('page_id').resample(resample_period).size()
+  grouped_pages = df.groupby('page_id').resample(resample_period).size()
 
-  formatted_page_ids = page_ids.fillna(0).transpose()
+  formatted_grouped_pages = grouped_pages.fillna(0).transpose()
 
-  print formatted_page_ids
+  page_mapping = {}
 
-  writeDataFrameToCsv(formatted_page_ids)
+  for page in pages_to_parse.pages:
+    page_mapping[page['page_id']] = page['name']
 
-  formatted_page_ids.plot()
+  formatted_grouped_pages.rename(columns = page_mapping, inplace = True)
+
+  print formatted_grouped_pages
+
+  writeDataFrameToCsv(formatted_grouped_pages)
+
+  formatted_grouped_pages.plot()
 
   plt.show()
 
-  # status_type_counts.to_csv('output.csv')
+def postLengths():
+
+  df = createDataFrame()
+
+  df['message_length'] = df['status_message'].astype(str).apply(len)
+
+  grouped_lengths = df.resample(resample_period).mean()['message_length']
+
+  print grouped_lengths
+
+  writeDataFrameToCsv(grouped_lengths)
+
+  grouped_lengths.plot()
+
+  plt.show()
 
 def getAggregateStats():
 
