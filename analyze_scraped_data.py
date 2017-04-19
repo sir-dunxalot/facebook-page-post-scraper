@@ -1,24 +1,99 @@
+import argparse
 import csv
+import datetime
+import glob
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import os
 
-input_path = "collated_data"
+from lib import formatting
 
-def readCsv(csv_path):
+# Options
 
-  df = pd.read_csv(csv_path, index_col = False)
-  # rng = pd.date_range('1/3/2015', periods = 7, freq = '4M')
+input_path = 'data/scraped'
+output_path = 'data/analyzed'
+resample_period = 'M'
 
-  df['Datetime'] = pd.to_datetime(df['status_published'])
+# End of options
 
-  df = df.set_index('Datetime')
+# Parse arguments given via the CLI
 
-  status_type_counts = df.groupby('status_type').resample('4M').size()
+parser = argparse.ArgumentParser(description = 'Options for analyzing data from FB')
 
-  status_type_counts.to_csv('output.csv')
+parser.add_argument('action', help = 'The name of the analysis method to run')
+parser.add_argument('--output', action='store_true', help = 'When present, analysis will be outputted into a CSV file', default = False)
+
+args = parser.parse_args()
+
+def writeDataFrameToCsv(df):
+  if args.output:
+    write_starttime = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+    output_file_path = os.path.join(output_path, '%s_%s.csv' % (args.action, write_starttime))
+
+    df.to_csv(output_file_path)
+
+    print 'Analysis written to %s' % output_file_path
+
+def createDataFrame():
+
+  print 'Creating dataframe'
+
+  compilation_start = datetime.datetime.now()
+
+  all_files = glob.glob(input_path + '/*.csv')
+
+  dataframe = pd.concat((pd.read_csv(file, index_col = False) for file in all_files))
+
+  dataframe['Datetime'] = pd.to_datetime(dataframe['status_published'])
+
+  dataframe = dataframe.set_index('Datetime')
+
+  duration = datetime.datetime.now() - compilation_start
+
+  print 'Dataframe created in %s' % duration
+
+  return dataframe
+
+def groupByType():
+
+  df = createDataFrame()
+
+  status_types = df.groupby('status_type').resample(resample_period).size()
+
+  formatted_status_types = status_types.unstack(level = 0).fillna(0)
+
+  print formatted_status_types
+
+  writeDataFrameToCsv(formatted_status_types)
+
+  formatted_status_types.plot()
+
+  plt.show()
+
+  # status_type_counts.to_csv('output.csv')
+
+def getAggregateStats():
+
+  df = createDataFrame()
+
+  print '----------------------------'
+  print 'Number of rows: %s' % formatting.humanizeNumber(len(df.index))
+  print 'Number of elements: %s' % formatting.humanizeNumber(df.size)
+  print '----------------------------'
+
+  time_series = df.resample(resample_period).size()
+
+  print time_series
+
+  time_series.plot()
+
+  plt.show()
 
 if __name__ == '__main__':
-  readCsv("collated_data/2017-04-11_21:02:46.csv")
+  try:
+    globals()[args.action]()
+  except AttributeError:
+    'Method not found'
 
-  print "Done!"
+  print 'Done!'
