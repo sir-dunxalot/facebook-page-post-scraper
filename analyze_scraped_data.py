@@ -121,6 +121,24 @@ def postLengths():
 
   plt.show()
 
+def postLengthsGroupByType():
+
+  df = createDataFrame()
+
+  df['message_length'] = df['status_message'].astype(str).apply(len)
+
+  grouped_lengths = df.groupby('status_type').resample(resample_period).mean()['message_length']
+
+  formatted_grouped_lengths = grouped_lengths.unstack(level = 0).fillna(0)
+
+  print formatted_grouped_lengths
+
+  writeDataFrameToCsv(formatted_grouped_lengths)
+
+  formatted_grouped_lengths.plot()
+
+  plt.show()
+
 def getAggregateStats():
 
   df = createDataFrame()
