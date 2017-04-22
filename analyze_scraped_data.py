@@ -24,12 +24,16 @@ parser = argparse.ArgumentParser(description = 'Options for analyzing data from 
 parser.add_argument('action', help = 'The name of the analysis method to run')
 parser.add_argument('--output', action = 'store_true', help = 'When present, analysis will be outputted into a CSV file', default = False)
 parser.add_argument('--period', help = 'The resample period to use for grouping data', default = 'M')
+parser.add_argument('--chart', help = 'The type of chart you would like to plot')
 
 args = parser.parse_args()
 
 resample_period = args.period
+chart = args.chart
 
 def writeDataFrameToCsv(df):
+  print df
+
   if args.output:
     write_starttime = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
     output_file_path = os.path.join(output_path, '%s_%s.csv' % (args.action, write_starttime))
@@ -37,6 +41,14 @@ def writeDataFrameToCsv(df):
     df.to_csv(output_file_path)
 
     print 'Analysis written to %s' % output_file_path
+
+def renderChart(df):
+  if args.chart:
+    df.plot[chart]()
+  else:
+    df.plot()
+
+  plt.show()
 
 def createDataFrame():
 
@@ -82,13 +94,8 @@ def groupByType():
 
   formatted_status_types = status_types.fillna(0).transpose()
 
-  print formatted_status_types
-
   writeDataFrameToCsv(formatted_status_types)
-
-  formatted_status_types.plot()
-
-  plt.show()
+  renderChart(formatted_status_types)
 
 def groupByTypePeriodOverPeriod():
 
@@ -112,13 +119,8 @@ def groupByTypePeriodOverPeriod():
 
   formatted_status_types = formatted_status_types.ix[1:]
 
-  print formatted_status_types
-
   writeDataFrameToCsv(formatted_status_types)
-
-  formatted_status_types.plot()
-
-  plt.show()
+  renderChart(formatted_status_types)
 
 def groupByPage():
 
@@ -135,13 +137,8 @@ def groupByPage():
 
   formatted_grouped_pages.rename(columns = page_mapping, inplace = True)
 
-  print formatted_grouped_pages
-
   writeDataFrameToCsv(formatted_grouped_pages)
-
-  formatted_grouped_pages.plot()
-
-  plt.show()
+  renderChart(formatted_grouped_pages)
 
 def postLengths():
 
@@ -151,13 +148,8 @@ def postLengths():
 
   grouped_lengths = df.resample(resample_period).mean()['message_length']
 
-  print grouped_lengths
-
   writeDataFrameToCsv(grouped_lengths)
-
-  grouped_lengths.plot()
-
-  plt.show()
+  renderChart(grouped_lengths)
 
 def postLengthsGroupByType():
 
@@ -169,13 +161,8 @@ def postLengthsGroupByType():
 
   formatted_grouped_lengths = grouped_lengths.unstack(level = 0).fillna(0)
 
-  print formatted_grouped_lengths
-
   writeDataFrameToCsv(formatted_grouped_lengths)
-
-  formatted_grouped_lengths.plot()
-
-  plt.show()
+  renderChart(formatted_grouped_lengths)
 
 def getDataframeStats():
 
@@ -188,11 +175,8 @@ def getDataframeStats():
 
   time_series = df.resample(resample_period).size()
 
-  print time_series
-
-  time_series.plot()
-
-  plt.show()
+  writeDataFrameToCsv(time_series)
+  renderChart(time_series)
 
 if __name__ == '__main__':
   try:
