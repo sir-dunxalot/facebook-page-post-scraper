@@ -14,7 +14,6 @@ from lib import formatting
 
 input_path = 'data/scraped'
 output_path = 'data/analyzed'
-resample_period = 'M'
 
 # End of options
 
@@ -24,8 +23,11 @@ parser = argparse.ArgumentParser(description = 'Options for analyzing data from 
 
 parser.add_argument('action', help = 'The name of the analysis method to run')
 parser.add_argument('--output', action = 'store_true', help = 'When present, analysis will be outputted into a CSV file', default = False)
+parser.add_argument('--period', help = 'The resample period to use for grouping data', default = 'M')
 
 args = parser.parse_args()
+
+resample_period = args.period
 
 def writeDataFrameToCsv(df):
   if args.output:
@@ -46,17 +48,23 @@ def createDataFrame():
 
   all_files = glob.glob(input_path + '/*.csv')
 
-  dataframe = pd.concat((pd.read_csv(file, index_col = False) for file in all_files))
+  df = pd.concat((pd.read_csv(file, index_col = False) for file in all_files))
+
+  # Remove wierd status types because they're used so little (usually zero)
+
+  df = df[(df.status_type != 'note') & (df.status_type != 'event')]
+
+  # df.drop(df[(df.status_type == 'note') | (df.status_type == 'event')].index, inplace = True)
 
   # Add page_id
 
-  dataframe['page_id'] = dataframe['status_id'].apply(lambda x: x.split('_')[0])
+  df['page_id'] = df['status_id'].apply(lambda x: x.split('_')[0])
 
   # Format and list by Datetime
 
-  dataframe['Datetime'] = pd.to_datetime(dataframe['status_published'])
+  df['Datetime'] = pd.to_datetime(df['status_published'])
 
-  dataframe = dataframe.set_index('Datetime')
+  df.set_index('Datetime', inplace = True)
 
   # Print the duration it took to create the dataframe for informational purposes
 
@@ -64,7 +72,7 @@ def createDataFrame():
 
   print 'Dataframe created in %s' % duration
 
-  return dataframe
+  return df
 
 def groupByType():
 
@@ -72,7 +80,37 @@ def groupByType():
 
   status_types = df.groupby('status_type').resample(resample_period).size()
 
-  formatted_status_types = status_types.unstack(level = 0).fillna(0)
+  formatted_status_types = status_types.fillna(0).transpose()
+
+  print formatted_status_types
+
+  writeDataFrameToCsv(formatted_status_types)
+
+  formatted_status_types.plot()
+
+  plt.show()
+
+def groupByTypePeriodOverPeriod():
+
+  df = createDataFrame()
+
+  status_types = df.groupby('status_type').resample(resample_period).size()
+
+  formatted_status_types = status_types.fillna(0).transpose()
+
+  for column_name in list(formatted_status_types):
+    change_column_name = '%s_change' % column_name
+
+    old_value = formatted_status_types[column_name].shift(-1)
+    new_value = formatted_status_types[column_name]
+
+    formatted_status_types[change_column_name] = (old_value / new_value * 100) - 100
+
+    del formatted_status_types[column_name]
+
+  # Remove the first row because the data is thrown off by no previous time period
+
+  formatted_status_types = formatted_status_types.ix[1:]
 
   print formatted_status_types
 
@@ -139,7 +177,7 @@ def postLengthsGroupByType():
 
   plt.show()
 
-def getAggregateStats():
+def getDataframeStats():
 
   df = createDataFrame()
 
