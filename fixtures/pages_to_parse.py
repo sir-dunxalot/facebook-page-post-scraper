@@ -1,5 +1,13 @@
 pages = [
   {
+    'page_id': '113408673932',
+    'name': 'HBO',
+    'category': 'Entertainment'
+  }
+]
+
+previously_scraped_pages = [
+  {
     'page_id': '146505212039213',
     'name': 'Unilad',
     'category': 'Hype'
@@ -87,5 +95,46 @@ pages = [
     'page_id': '10664530778',
     'name': 'Rolling Stone',
     'category': 'Entertainment'
+  },
+  {
+    'page_id': '89742860745',
+    'name': 'NBC',
+    'category': 'News',
+  }, {
+    'page_id': '15704546335',
+    'name': 'Fox News',
+    'category': 'News',
+  }, {
+    'page_id': '10513336322',
+    'name': 'The Guardian',
+    'category': 'News',
+  }, {
+    'page_id': '5550296508',
+    'name': 'CNN',
+    'category': 'News',
+  }, {
+    'page_id': '5281959998',
+    'name': 'The New York Times',
+    'category': 'News',
+  }, {
+    'page_id': '8860325749',
+    'name': 'The Financial Times',
+    'category': 'News',
+  }, {
+    'page_id': '8245623462',
+    'name': 'NBA',
+    'category': 'Sports',
+  }, {
+    'page_id': '68680511262',
+    'name': 'NFL',
+    'category': 'Sports',
+  }, {
+    'page_id': '13652355666',
+    'name': 'USA Today',
+    'category': 'News',
+  }, {
+    'page_id': '26781952138',
+    'name': 'Times of India',
+    'category': 'News',
   }
 ]

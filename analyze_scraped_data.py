@@ -25,6 +25,7 @@ parser.add_argument('action', help = 'The name of the analysis method to run')
 parser.add_argument('--output', action = 'store_true', help = 'When present, analysis will be outputted into a CSV file', default = False)
 parser.add_argument('--period', help = 'The resample period to use for grouping data', default = 'M')
 parser.add_argument('--chart', help = 'The type of chart you would like to plot')
+parser.add_argument('--page', help = 'The name of an individual page you would like to run analysis for')
 
 args = parser.parse_args()
 
@@ -50,6 +51,12 @@ def renderChart(df):
 
   plt.show()
 
+def getMatchingFiles():
+  glob_string = '*' if args.page is None else \
+    '*%s*' % formatting.dasherize(args.page)
+
+  return glob.glob(input_path + '/%s.csv' % glob_string)
+
 def createDataFrame():
 
   print 'Creating dataframe'
@@ -58,15 +65,13 @@ def createDataFrame():
 
   # Collate all matching CSVs into a single dataframe
 
-  all_files = glob.glob(input_path + '/*.csv')
+  matching_files = getMatchingFiles()
 
-  df = pd.concat((pd.read_csv(file, index_col = False) for file in all_files))
+  df = pd.concat((pd.read_csv(file, index_col = False) for file in matching_files))
 
   # Remove wierd status types because they're used so little (usually zero)
 
   df = df[(df.status_type != 'note') & (df.status_type != 'event')]
-
-  # df.drop(df[(df.status_type == 'note') | (df.status_type == 'event')].index, inplace = True)
 
   # Add page_id
 
@@ -92,7 +97,12 @@ def groupByType():
 
   status_types = df.groupby('status_type').resample(resample_period).size()
 
-  formatted_status_types = status_types.fillna(0).transpose()
+  formatted_status_types = status_types.fillna(0)
+
+  if len(getMatchingFiles()) > 1:
+    formatted_status_types = formatted_status_types.transpose()
+  else:
+    formatted_status_types = formatted_status_types.unstack(level = 0)
 
   writeDataFrameToCsv(formatted_status_types)
   renderChart(formatted_status_types)

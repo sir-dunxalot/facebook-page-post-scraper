@@ -8,7 +8,7 @@ import time
 
 from fixtures import pages_to_parse
 from pync import Notifier
-from lib import cli, http
+from lib import cli, formatting, http
 
 # Start of options
 
@@ -19,7 +19,10 @@ output_dir = 'data/scraped'
 
 # End of options
 
+column_headings = ["status_id", "status_message", "link_name", "status_type", "status_link", "status_published", "status_video_length", "num_reactions", "num_comments", "num_shares", "num_likes", "num_loves", "num_wows", "num_hahas", "num_sads", "num_angrys"]
+published_index = column_headings.index('status_published')
 date_format = "%d-%m-%Y"
+facebook_date_format = '%Y-%m-%dT%H:%M:%S+0000'
 pages = pages_to_parse.pages
 
 # Parse arguments given via the CLI
@@ -144,7 +147,7 @@ def processFacebookPageFeedStatus(status, access_token):
   # b) it's not easy to use in statistical programs.
 
   status_published = datetime.datetime.strptime(
-          status['created_time'],'%Y-%m-%dT%H:%M:%S+0000')
+          status['created_time'], facebook_date_format)
   status_published = status_published + \
           datetime.timedelta(hours=-5) # EST
   status_published = status_published.strftime(
@@ -202,7 +205,7 @@ def scrapeFacebookPageFeedStatus(page, access_token):
   date_since_string = date_since.strftime(date_format)
   date_until_string = date_until.strftime(date_format)
 
-  formatted_page_name = '-'.join(page_name.lower().split())
+  formatted_page_name = formatting.dasherize(page_name)
 
   csv_file_path = '%s/%s_posts_%s_%s.csv' % (output_dir, formatted_page_name, date_since_string, date_until_string)
 
@@ -221,10 +224,7 @@ def scrapeFacebookPageFeedStatus(page, access_token):
 
   with open(csv_file_path, 'wb') as file:
     w = csv.writer(file)
-    w.writerow(["status_id", "status_message", "link_name", "status_type",
-                "status_link", "status_published", "status_video_length", "num_reactions",
-                "num_comments", "num_shares", "num_likes", "num_loves",
-                "num_wows", "num_hahas", "num_sads", "num_angrys"])
+    w.writerow(column_headings)
 
     has_next_page = True
     num_processed = 0   # keep a count on how many we've processed
@@ -235,20 +235,33 @@ def scrapeFacebookPageFeedStatus(page, access_token):
     statuses = getFacebookPageFeedData(page_id, access_token, 100)
 
     while has_next_page:
+
       for status in statuses['data']:
 
         # Ensure it is a status with the expected metadata
         if 'reactions' in status:
-          w.writerow(processFacebookPageFeedStatus(status,
-                access_token))
+          processed_status = processFacebookPageFeedStatus(status,
+                access_token)
+          w.writerow(processed_status)
 
         # output progress occasionally to make sure code is not
         # stalling
         num_processed += 1
 
         if num_processed % 100 == 0:
-          print "%s Statuses Processed: %s" % \
-                (num_processed, datetime.datetime.now())
+          first_date = processed_status[published_index]
+          timestamp_today = time.time()
+          timestamp_since = time.mktime(date_since.timetuple())
+          timestamp_current_progress = time.mktime(datetime.datetime.strptime(first_date, '%Y-%m-%d %H:%M:%S').timetuple())
+          timestamp_max_difference = timestamp_today - timestamp_since
+          timestamp_difference = timestamp_current_progress - timestamp_since
+
+          iteration = timestamp_max_difference - timestamp_difference
+          total_iterations = timestamp_max_difference
+
+          cli.printProgressBar(iteration, total_iterations)
+
+          # print '%s%%' % progress
 
       # if there is no next page, we're done.
       if 'paging' in statuses.keys():
