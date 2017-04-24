@@ -157,6 +157,34 @@ def groupByPage():
   writeDataFrameToCsv(formatted_grouped_pages)
   renderChart(formatted_grouped_pages)
 
+def groupByPageAndType():
+
+  df = createDataFrame()
+
+  groups = df.groupby(['page_id', 'status_type']).size()
+
+  formatted_groups = groups.fillna(0).unstack(level = 0).transpose()
+
+  page_mapping = {} # TODO: DO ON ROW
+
+  for page in pages_to_parse.pages:
+    page_mapping[page['page_id']] = page['name']
+
+  formatted_groups.rename(index = page_mapping, inplace = True)
+
+  formatted_groups = formatted_groups.apply(lambda row: percentagizeRow(row), axis = 1)
+
+  writeDataFrameToCsv(formatted_groups)
+  renderChart(formatted_groups)
+
+def percentagizeRow(row):
+  total = row.sum()
+
+  for index, value in enumerate(row):
+    row[index] = float(value) / total * 100
+
+  return row
+
 def postLengths():
 
   df = createDataFrame()

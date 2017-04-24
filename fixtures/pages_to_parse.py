@@ -1,13 +1,5 @@
 pages = [
   {
-    'page_id': '113408673932',
-    'name': 'HBO',
-    'category': 'Entertainment'
-  }
-]
-
-previously_scraped_pages = [
-  {
     'page_id': '146505212039213',
     'name': 'Unilad',
     'category': 'Hype'
