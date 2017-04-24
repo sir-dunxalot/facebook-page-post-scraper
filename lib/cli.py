@@ -57,3 +57,6 @@ def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, bar_len
     sys.stdout.write('\n')
 
   sys.stdout.flush()
+
+def horizontalRule():
+  return '----------------------------'

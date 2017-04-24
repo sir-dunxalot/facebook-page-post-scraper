@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 from fixtures import pages_to_parse
-from lib import formatting
+from lib import cli, formatting
 
 # Options
 
@@ -32,6 +32,11 @@ args = parser.parse_args()
 resample_period = args.period
 chart = args.chart
 
+def describe(df):
+  print cli.horizontalRule()
+  print df.describe()
+  print cli.horizontalRule()
+
 def writeDataFrameToCsv(df):
   print df
 
@@ -41,11 +46,11 @@ def writeDataFrameToCsv(df):
 
     df.to_csv(output_file_path)
 
-    print 'Analysis written to %s' % output_file_path
+    print 'Dataframe written to %s' % output_file_path
 
 def renderChart(df):
   if args.chart:
-    df.plot[chart]()
+    getattr(df.plot, chart)()
   else:
     df.plot()
 
@@ -94,6 +99,8 @@ def createDataFrame():
 def groupByType():
 
   df = createDataFrame()
+
+  describe(df['status_type'])
 
   status_types = df.groupby('status_type').resample(resample_period).size()
 
@@ -167,6 +174,8 @@ def postLengthsGroupByType():
 
   df['message_length'] = df['status_message'].astype(str).apply(len)
 
+  describe(df['message_length'])
+
   grouped_lengths = df.groupby('status_type').resample(resample_period).mean()['message_length']
 
   formatted_grouped_lengths = grouped_lengths.unstack(level = 0).fillna(0)
@@ -174,14 +183,47 @@ def postLengthsGroupByType():
   writeDataFrameToCsv(formatted_grouped_lengths)
   renderChart(formatted_grouped_lengths)
 
-def getDataframeStats():
+def videoLengths():
 
   df = createDataFrame()
 
-  print '----------------------------'
+  # Remove non-video posts
+
+  df = df[df.status_type == 'video']
+
+  df['video_length_seconds'] = df['status_video_length'].apply(lambda x: formatting.durationToSeconds(x))
+
+  describe(df['video_length_seconds'])
+
+  grouped_lengths = df.resample(resample_period).mean()['video_length_seconds']
+
+  writeDataFrameToCsv(grouped_lengths)
+  renderChart(grouped_lengths)
+
+def engagementByType():
+
+  df = createDataFrame()
+
+  status_types = df.groupby('status_type').mean()
+
+  columns_to_remove = ['num_loves', 'num_wows', 'num_hahas', 'num_sads', 'num_angrys']
+
+  status_types.drop(columns_to_remove, axis = 1, inplace = True)
+
+  formatted_status_types = status_types.fillna(0).transpose()
+
+  writeDataFrameToCsv(formatted_status_types)
+  renderChart(formatted_status_types)
+
+def dataframeStats():
+
+  df = createDataFrame()
+
+  print cli.horizontalRule()
   print 'Number of rows: %s' % formatting.humanizeNumber(len(df.index))
   print 'Number of elements: %s' % formatting.humanizeNumber(df.size)
-  print '----------------------------'
+
+  describe(df)
 
   time_series = df.resample(resample_period).size()
 
