@@ -1,3 +1,5 @@
+from __future__ import division
+
 import argparse
 import csv
 import datetime
@@ -23,6 +25,7 @@ parser = argparse.ArgumentParser(description = 'Options for analyzing data from 
 
 parser.add_argument('action', help = 'The name of the analysis method to run')
 parser.add_argument('--output', action = 'store_true', help = 'When present, analysis will be outputted into a CSV file', default = False)
+parser.add_argument('--outliers', action = 'store_true', help = 'When present, outliers will be kept in the data set', default = False)
 parser.add_argument('--period', help = 'The resample period to use for grouping data', default = 'M')
 parser.add_argument('--chart', help = 'The type of chart you would like to plot')
 parser.add_argument('--page', help = 'The name of an individual page you would like to run analysis for')
@@ -77,6 +80,17 @@ def createDataFrame():
   # Remove wierd status types because they're used so little (usually zero)
 
   df = df[(df.status_type != 'note') & (df.status_type != 'event')]
+
+  # Remove reaction counts because they're slow to collect
+
+  columns_to_remove = ['num_loves', 'num_wows', 'num_hahas', 'num_sads', 'num_angrys']
+
+  df.drop(columns_to_remove, axis = 1, inplace = True)
+
+  # Remove outliers (anything outside 3 SDs from the mean)
+
+  if not args.outliers:
+    df = df[np.abs(df.num_shares - df.num_shares.mean()) <= (3 * df.num_shares.std())]
 
   # Add page_id
 
@@ -163,7 +177,7 @@ def groupByPageAndType():
 
   groups = df.groupby(['page_id', 'status_type']).size()
 
-  formatted_groups = groups.fillna(0).unstack(level = 0).transpose()
+  formatted_groups = groups.unstack(level = 0).transpose()
 
   page_mapping = {} # TODO: DO ON ROW
 
@@ -172,7 +186,7 @@ def groupByPageAndType():
 
   formatted_groups.rename(index = page_mapping, inplace = True)
 
-  formatted_groups = formatted_groups.apply(lambda row: percentagizeRow(row), axis = 1)
+  formatted_groups = formatted_groups.apply(lambda row: percentagizeRow(row), axis = 1).fillna(0)
 
   writeDataFrameToCsv(formatted_groups)
   renderChart(formatted_groups)
@@ -181,7 +195,7 @@ def percentagizeRow(row):
   total = row.sum()
 
   for index, value in enumerate(row):
-    row[index] = float(value) / total * 100
+    row[index] = value / total * 100
 
   return row
 
@@ -228,35 +242,77 @@ def videoLengths():
   writeDataFrameToCsv(grouped_lengths)
   renderChart(grouped_lengths)
 
-def engagementByType():
+def averageEngagementByType():
 
   df = createDataFrame()
 
   status_types = df.groupby('status_type').mean()
 
-  columns_to_remove = ['num_loves', 'num_wows', 'num_hahas', 'num_sads', 'num_angrys']
-
-  status_types.drop(columns_to_remove, axis = 1, inplace = True)
+  describe(status_types)
 
   formatted_status_types = status_types.fillna(0).transpose()
 
   writeDataFrameToCsv(formatted_status_types)
   renderChart(formatted_status_types)
 
-def dataframeStats():
+def groupByDomainName():
+
+  # TODO: Warn if page not supplied and ask for CLI confirmation
 
   df = createDataFrame()
+
+  # Get rid of non-links
+
+  df = df[df.status_type == 'link']
+
+  df['link_domain'] = df['status_link'].apply(lambda x: formatting.getDomainName(x))
+
+  grouped_domains = df.groupby('link_domain').resample(resample_period).size()
+
+  writeDataFrameToCsv(grouped_domains)
+  renderChart(grouped_domains)
+
+def virality():
+  df = createDataFrame()
+  output = pd.DataFrame(columns = ['status_type', 'virality'])
+  status_types = df.status_type.unique()
+  total_shares = df['num_shares'].sum()
+
+  for status_type in status_types:
+    df_segment = df[df.status_type == status_type]
+
+    top_items = df_segment[df_segment.num_shares > df_segment.num_shares.quantile(0.95)].fillna(0)
+
+    size_of_top = top_items['num_shares'].sum()
+    relative_size_of_top = size_of_top / total_shares
+
+    output.loc[len(output) + 1] = [status_type, relative_size_of_top]
+
+  writeDataFrameToCsv(output)
+  # renderChart(output)
+
+def dataframeStats(use_mean = False):
+
+  df = createDataFrame()
+  number_of_brands = len(df.page_id.unique())
 
   print cli.horizontalRule()
   print 'Number of rows: %s' % formatting.humanizeNumber(len(df.index))
   print 'Number of elements: %s' % formatting.humanizeNumber(df.size)
+  print 'Number of brands: %s' % number_of_brands
 
   describe(df)
 
   time_series = df.resample(resample_period).size()
 
+  if use_mean:
+    time_series = time_series.apply(lambda x: x / number_of_brands)
+
   writeDataFrameToCsv(time_series)
   renderChart(time_series)
+
+def dataframeAverageStats():
+  dataframeStats(use_mean = True)
 
 if __name__ == '__main__':
   try:

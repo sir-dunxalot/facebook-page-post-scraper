@@ -1,6 +1,8 @@
 import inflection
 import locale
 
+from urlparse import urlparse
+
 locale.setlocale(locale.LC_ALL, 'en_US')
 
 def humanizeNumber(number):
@@ -25,3 +27,11 @@ def durationToSeconds(duration):
   total_seconds = int(h) * 3600 + int(m) * 60 + int(s)
 
   return total_seconds
+
+def getDomainName(url):
+  if type(url) is not str:
+    return ''
+
+  parsed_url = urlparse(url)
+
+  return parsed_url.netloc
